@@ -50,7 +50,6 @@ import java.util.stream.Collectors;
 import jakarta.resource.spi.BootstrapContext;
 import jakarta.resource.spi.endpoint.MessageEndpointFactory;
 import jakarta.resource.spi.work.WorkException;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
@@ -60,58 +59,67 @@ import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
 /**
  * @author Steve Millidge (Payara Foundation)
  */
-class SQSPoller extends TimerTask {
+public class SQSPoller extends TimerTask {
 
-    AmazonSQSActivationSpec spec;
-    BootstrapContext ctx;
-    MessageEndpointFactory factory;
-    SqsClient client;
+	AmazonSQSActivationSpec spec;
+	BootstrapContext ctx;
+	MessageEndpointFactory factory;
+	SqsClient client;
 
-    SQSPoller(AmazonSQSActivationSpec sqsSpec, BootstrapContext context, MessageEndpointFactory endpointFactory) {
-        spec = sqsSpec;
-        ctx = context;
-        factory = endpointFactory;
-        client = SqsClient.builder().region(Region.of(spec.getRegion()))
-                .credentialsProvider(spec).build();
-    }
+	SQSPoller(AmazonSQSActivationSpec sqsSpec, BootstrapContext context,
+			MessageEndpointFactory endpointFactory) {
+		spec = sqsSpec;
+		ctx = context;
+		factory = endpointFactory;
+		client = SqsClient.builder().region(Region.of(spec.getRegion()))
+				.credentialsProvider(spec).build();
+	}
 
-    @Override
-    public void run() {
-        try {
-            ReceiveMessageRequest rmr = ReceiveMessageRequest.builder()
-                    .queueUrl(spec.getQueueURL())
-                    .maxNumberOfMessages(spec.getMaxMessages()).visibilityTimeout(spec.getVisibilityTimeout())
-                    .waitTimeSeconds(spec.getPollInterval() / 1000)
-                    .attributeNames(Arrays.stream(spec.getAttributeNames().split(","))
-                            .map(s -> QueueAttributeName.fromValue(s)).collect(Collectors.toList()))
-                    .messageAttributeNames(Arrays.asList(spec.getMessageAttributeNames().split(","))).build();
-            List<Message> messages = client.receiveMessage(rmr).messages();
-            if (!messages.isEmpty()) {
-                Class<?> mdbClass = factory.getEndpointClass();
-                for (Message message : messages) {
-                    for (Method m : mdbClass.getMethods()) {
-                        if (m.isAnnotationPresent(OnSQSMessage.class) && m.getParameterCount() == 1
-                                && m.getParameterTypes()[0].equals(Message.class)) {
-                            try {
-                                ctx.getWorkManager()
-                                        .scheduleWork(new SQSWork(client, factory, m, message, spec.getQueueURL()));
-                            } catch (WorkException ex) {
-                                Logger.getLogger(AmazonSQSResourceAdapter.class.getName())
-                                        .log(Level.SEVERE, null, ex);
-                            }
-                        }
-                    }
+	protected SQSPoller(AmazonSQSActivationSpec sqsSpec, BootstrapContext context,
+			MessageEndpointFactory endpointFactory, SqsClient client) {
+		this.client = client;
+		this.ctx = context;
+		this.factory = endpointFactory;
+		this.spec = sqsSpec;
+	}
 
-                }
-            }
-        } catch (IllegalStateException ise) {
-            // Fix #29 ensure Illegal State Exception doesn't blow up the timer
-            Logger.getLogger(AmazonSQSResourceAdapter.class.getName())
-                    .log(Level.WARNING, "Poller caught an Illegal State Exception", ise);
-        } catch (Exception e) {
-            Logger.getLogger(AmazonSQSResourceAdapter.class.getName())
-                    .log(Level.WARNING, "Poller caught an Unexpected Exception", e);
-        }
-    }
+	@Override
+	public void run() {
+		try {
+			ReceiveMessageRequest rmr = ReceiveMessageRequest.builder()
+					.queueUrl(spec.getQueueURL())
+					.maxNumberOfMessages(spec.getMaxMessages()).visibilityTimeout(spec.getVisibilityTimeout())
+					.waitTimeSeconds(spec.getPollInterval() / 1000)
+					.attributeNames(Arrays.stream(spec.getAttributeNames().split(","))
+							.map(QueueAttributeName::fromValue).collect(Collectors.toList()))
+					.messageAttributeNames(Arrays.asList(spec.getMessageAttributeNames().split(","))).build();
+			List<Message> messages = client.receiveMessage(rmr).messages();
+			if (!messages.isEmpty()) {
+				Class<?> mdbClass = factory.getEndpointClass();
+				for (Message message : messages) {
+					for (Method m : mdbClass.getMethods()) {
+						if (m.isAnnotationPresent(OnSQSMessage.class) && m.getParameterCount() == 1
+								&& m.getParameterTypes()[0].equals(Message.class)) {
+							try {
+								ctx.getWorkManager()
+								.scheduleWork(new SQSWork(client, factory, m, message, spec.getQueueURL()));
+							} catch (WorkException ex) {
+								Logger.getLogger(AmazonSQSResourceAdapter.class.getName())
+								.log(Level.SEVERE, null, ex);
+							}
+						}
+					}
+
+				}
+			}
+		} catch (IllegalStateException ise) {
+			// Fix #29 ensure Illegal State Exception doesn't blow up the timer
+			Logger.getLogger(AmazonSQSResourceAdapter.class.getName())
+			.log(Level.WARNING, "Poller caught an Illegal State Exception", ise);
+		} catch (Exception e) {
+			Logger.getLogger(AmazonSQSResourceAdapter.class.getName())
+			.log(Level.WARNING, "Poller caught an Unexpected Exception", e);
+		}
+	}
 
 }
