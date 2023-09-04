@@ -51,40 +51,40 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
  *
  * @author Steve Millidge (Payara Foundation)
  */
-class AmazonSQSConnectionImpl  implements AmazonSQSConnection {
-    
-    private AmazonSQSManagedConnection underlyingConnection;
-    
-    AmazonSQSConnectionImpl(AmazonSQSManagedConnection realConn) {
-        underlyingConnection = realConn;
-    }
+public class AmazonSQSConnectionImpl implements AmazonSQSConnection {
 
-    @Override
-    public SendMessageResponse sendMessage(SendMessageRequest request) {
-        return underlyingConnection.sendMessage(request);
-    }
+	private AmazonSQSManagedConnection underlyingConnection;
 
-    @Override
-    public SendMessageResponse sendMessage(String queueURL, String messageBody) {
-        return underlyingConnection.sendMessage(queueURL, messageBody);
-    }
+	AmazonSQSConnectionImpl(AmazonSQSManagedConnection realConn) {
+		underlyingConnection = realConn;
+	}
 
-    @Override
-    public SendMessageBatchResponse sendMessageBatch(SendMessageBatchRequest batch) {
-        return underlyingConnection.sendMessageBatch(batch);
-    }
+	@Override
+	public SendMessageResponse sendMessage(SendMessageRequest request) {
+		return underlyingConnection.sendMessage(request);
+	}
 
-    @Override
-    public SendMessageBatchResponse sendMessageBatch(String queueURL, List<SendMessageBatchRequestEntry> entries) {
-        return underlyingConnection.sendMessageBatch(queueURL, entries);
-    }
+	@Override
+	public SendMessageResponse sendMessage(String queueURL, String messageBody) {
+		return underlyingConnection.sendMessage(queueURL, messageBody);
+	}
 
-    @Override
-    public void close() throws Exception {
-        underlyingConnection.removeHandle(this);
-    }
+	@Override
+	public SendMessageBatchResponse sendMessageBatch(SendMessageBatchRequest batch) {
+		return underlyingConnection.sendMessageBatch(batch);
+	}
 
-    void setRealConnection(AmazonSQSManagedConnection aThis) {
-        this.underlyingConnection = aThis;
-    }
+	@Override
+	public SendMessageBatchResponse sendMessageBatch(String queueURL, List<SendMessageBatchRequestEntry> entries) {
+		return underlyingConnection.sendMessageBatch(queueURL, entries);
+	}
+
+	@Override
+	public void close() throws Exception {
+		underlyingConnection.removeHandle(this);
+	}
+
+	void setRealConnection(AmazonSQSManagedConnection aThis) {
+		this.underlyingConnection = aThis;
+	}
 }

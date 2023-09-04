@@ -59,82 +59,97 @@ import javax.transaction.xa.XAResource;
  * @author Steve Millidge (Payara Foundation)
  */
 @Connector(
-        displayName = "Amazon SQS Resource Adapter",
-        vendorName = "Payara Services Limited",
-        version = "1.0"
-)
+		displayName = "Amazon SQS Resource Adapter",
+		vendorName = "Payara Services Limited",
+		version = "1.0"
+		)
 public class AmazonSQSResourceAdapter implements ResourceAdapter, Serializable {
 
-    private static final Logger LOGGER = Logger.getLogger(AmazonSQSResourceAdapter.class.getName());
-    private final Map<MessageEndpointFactory, SQSPoller> registeredFactories;
-    private final Map<MessageEndpointFactory, Timer> registeredTimers;
-    private BootstrapContext context;
+	protected static final Logger LOGGER = Logger.getLogger(AmazonSQSResourceAdapter.class.getName());
+	private final Map<MessageEndpointFactory, SQSPoller> registeredFactories;
+	private final Map<MessageEndpointFactory, Timer> registeredTimers;
+	private BootstrapContext context;
 
-    public AmazonSQSResourceAdapter() {
-        registeredFactories = new ConcurrentHashMap<>();
-        registeredTimers = new ConcurrentHashMap<>();
-    }
+	public AmazonSQSResourceAdapter() {
+		registeredFactories = new ConcurrentHashMap<>();
+		registeredTimers = new ConcurrentHashMap<>();
+	}
 
-    @Override
-    public void start(BootstrapContext ctx) throws ResourceAdapterInternalException {
-        LOGGER.info("Amazon SQS Resource Adapter Started..");
-        context = ctx;
-    }
+	@Override
+	public void start(BootstrapContext ctx) throws ResourceAdapterInternalException {
+		LOGGER.info("Amazon SQS Resource Adapter Started..");
+		context = ctx;
+	}
 
-    @Override
-    public void stop() {
-        LOGGER.info("Amazon SQS Resource Adapter Stopped");
-    }
+	@Override
+	public void stop() {
+		LOGGER.info("Amazon SQS Resource Adapter Stopped");
+	}
 
-    @Override
-    public void endpointActivation(MessageEndpointFactory endpointFactory, ActivationSpec spec) throws ResourceException {
-        if (spec instanceof AmazonSQSActivationSpec) {
-            AmazonSQSActivationSpec sqsSpec = (AmazonSQSActivationSpec) spec;
-            SQSPoller sqsTask = new SQSPoller(sqsSpec, context, endpointFactory);
-            registeredFactories.put(endpointFactory, sqsTask);
+	@Override
+	public void endpointActivation(MessageEndpointFactory endpointFactory, ActivationSpec spec) throws ResourceException {
+		if (spec instanceof AmazonSQSActivationSpec) {
+			AmazonSQSActivationSpec sqsSpec = (AmazonSQSActivationSpec) spec;
+			SQSPoller sqsTask = new SQSPoller(sqsSpec, context, endpointFactory);
+			registeredFactories.put(endpointFactory, sqsTask);
 
-            Timer timer = createTimer();
-            registeredTimers.put(endpointFactory, timer);
-            timer.schedule(sqsTask, sqsSpec.getInitialPollDelay(), sqsSpec.getPollInterval());
+			Timer timer = createTimer();
+			registeredTimers.put(endpointFactory, timer);
+			timer.schedule(sqsTask, sqsSpec.getInitialPollDelay(), sqsSpec.getPollInterval());
 
-        } else {
-            LOGGER.log(Level.WARNING, "Got endpoint activation for an ActivationSpec of unknown class {0}", spec.getClass().getName());
-        }
-    }
+		} else {
+			LOGGER.log(Level.WARNING, "Got endpoint activation for an ActivationSpec of unknown class {0}", spec.getClass().getName());
+		}
+	}
 
-    @Override
-    public void endpointDeactivation(MessageEndpointFactory endpointFactory, ActivationSpec spec) {
-        SQSPoller sqsTask = registeredFactories.get(endpointFactory);
-        sqsTask.cancel();
+	@Override
+	public void endpointDeactivation(MessageEndpointFactory endpointFactory, ActivationSpec spec) {
+		SQSPoller sqsTask = registeredFactories.get(endpointFactory);
+		sqsTask.cancel();
 
-        Timer timer = registeredTimers.get(endpointFactory);
-        timer.cancel();
-    }
+		Timer timer = registeredTimers.get(endpointFactory);
+		timer.cancel();
+	}
 
-    @Override
-    public XAResource[] getXAResources(ActivationSpec[] specs) throws ResourceException {
-        return null;
-    }
+	@Override
+	public XAResource[] getXAResources(ActivationSpec[] specs) throws ResourceException {
+		return null;
+	}
 
-    private Timer createTimer() throws ResourceAdapterInternalException {
-        try {
-            return context.createTimer();
+	protected Timer createTimer() throws ResourceAdapterInternalException {
+		try {
+			return context.createTimer();
 
-        } catch (UnavailableException ex) {
-            LOGGER.log(Level.SEVERE, "Unable to create Poller", ex);
-            throw new ResourceAdapterInternalException(ex);
-        }
-    }
+		} catch (UnavailableException ex) {
+			LOGGER.log(Level.SEVERE, "Unable to create Poller", ex);
+			throw new ResourceAdapterInternalException(ex);
+		}
+	}
 
-    @Override
-    public int hashCode() {
-        return super.hashCode();
-    }
+	@Override
+	public int hashCode() {
+		return super.hashCode();
+	}
 
-    @Override
-    public boolean equals(Object obj) {
-        return super.equals(obj);
-    }
+	@Override
+	public boolean equals(Object obj) {
+		return super.equals(obj);
+	}
 
+	public Map<MessageEndpointFactory, SQSPoller> getRegisteredFactories() {
+		return registeredFactories;
+	}
+
+	public Map<MessageEndpointFactory, Timer> getRegisteredTimers() {
+		return registeredTimers;
+	}
+
+	public BootstrapContext getContext() {
+		return context;
+	}
+
+	public void setContext(BootstrapContext context) {
+		this.context = context;
+	}
 
 }

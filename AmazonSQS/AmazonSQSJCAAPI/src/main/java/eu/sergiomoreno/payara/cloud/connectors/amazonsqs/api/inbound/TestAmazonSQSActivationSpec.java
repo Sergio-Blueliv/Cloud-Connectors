@@ -11,6 +11,7 @@ public class TestAmazonSQSActivationSpec extends AmazonSQSActivationSpec {
 
 	private String overrideUrlEndPoint;
 
+
 	@Override
 	public void validate() throws InvalidPropertyException {
 		super.validate();

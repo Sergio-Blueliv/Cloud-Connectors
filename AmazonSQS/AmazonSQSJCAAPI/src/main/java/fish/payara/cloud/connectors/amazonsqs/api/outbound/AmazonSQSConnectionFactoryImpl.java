@@ -50,32 +50,32 @@ import jakarta.resource.spi.ConnectionManager;
  *
  * @author Steve Millidge (Payara Foundation)
  */
-class AmazonSQSConnectionFactoryImpl implements AmazonSQSConnectionFactory{
-    
-    private ConnectionManager cxManager;
-    private AmazonSQSManagedConnectionFactory mcf;
+public class AmazonSQSConnectionFactoryImpl implements AmazonSQSConnectionFactory {
 
-    AmazonSQSConnectionFactoryImpl(ConnectionManager cxManager, AmazonSQSManagedConnectionFactory mcf) {
-        this.cxManager = cxManager;
-        this.mcf = mcf;
-    }
+	private ConnectionManager cxManager;
+	private AmazonSQSManagedConnectionFactory mcf;
 
-    @Override
-    public AmazonSQSConnection getConnection() {
-        if (cxManager != null) {
-            try {
-                return (AmazonSQSConnection) cxManager.allocateConnection(mcf, null);
-            } catch (ResourceException ex) {
-                Logger.getLogger(AmazonSQSConnectionFactoryImpl.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        } else {
-            try {
-                return (AmazonSQSConnection) mcf.createManagedConnection(null, null);
-            } catch (ResourceException ex) {
-                Logger.getLogger(AmazonSQSConnectionFactoryImpl.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        return null;
-    }
-    
+	AmazonSQSConnectionFactoryImpl(ConnectionManager cxManager, AmazonSQSManagedConnectionFactory mcf) {
+		this.cxManager = cxManager;
+		this.mcf = mcf;
+	}
+
+	@Override
+	public AmazonSQSConnection getConnection() {
+		if (cxManager != null) {
+			try {
+				return (AmazonSQSConnection) cxManager.allocateConnection(mcf, null);
+			} catch (ResourceException ex) {
+				Logger.getLogger(AmazonSQSConnectionFactoryImpl.class.getName()).log(Level.SEVERE, null, ex);
+			}
+		} else {
+			try {
+				return (AmazonSQSConnection) mcf.createManagedConnection(null, null);
+			} catch (ResourceException ex) {
+				Logger.getLogger(AmazonSQSConnectionFactoryImpl.class.getName()).log(Level.SEVERE, null, ex);
+			}
+		}
+		return null;
+	}
+
 }

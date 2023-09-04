@@ -1,5 +1,5 @@
 /*
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
+AmazonSQSConnection.java * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS HEADER.
  *
  * Copyright (c) 2017 Payara Foundation and/or its affiliates. All rights reserved.
  *
@@ -44,7 +44,7 @@ package fish.payara.cloud.connectors.amazonsqs.api;
  * @author Steve Millidge (Payara Foundation)
  */
 public interface AmazonSQSConnectionFactory {
-    
-    public AmazonSQSConnection getConnection();
-    
+
+	AmazonSQSConnection getConnection();
+
 }

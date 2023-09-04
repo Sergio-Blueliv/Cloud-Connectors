@@ -75,7 +75,7 @@ public class SQSPoller extends TimerTask {
 				.credentialsProvider(spec).build();
 	}
 
-	protected SQSPoller(AmazonSQSActivationSpec sqsSpec, BootstrapContext context,
+	public SQSPoller(AmazonSQSActivationSpec sqsSpec, BootstrapContext context,
 			MessageEndpointFactory endpointFactory, SqsClient client) {
 		this.client = client;
 		this.ctx = context;

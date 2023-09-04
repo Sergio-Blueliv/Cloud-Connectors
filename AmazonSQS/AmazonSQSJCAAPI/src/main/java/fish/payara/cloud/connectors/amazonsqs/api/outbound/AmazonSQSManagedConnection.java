@@ -54,6 +54,7 @@ import javax.security.auth.Subject;
 import javax.transaction.xa.XAResource;
 
 import java.io.PrintWriter;
+import java.net.URI;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -75,154 +76,156 @@ import software.amazon.awssdk.utils.StringUtils;
  */
 public class AmazonSQSManagedConnection implements ManagedConnection, AmazonSQSConnection {
 
-    private final List<AmazonSQSConnection> connectionHandles = new LinkedList<>();
-    private final HashSet<ConnectionEventListener> listeners = new HashSet<>();
-    private PrintWriter logWriter;
-    private final SqsClient sqsClient;
+	private final List<AmazonSQSConnection> connectionHandles = new LinkedList<>();
+	private final HashSet<ConnectionEventListener> listeners = new HashSet<>();
+	private PrintWriter logWriter;
+	private final SqsClient sqsClient;
 
-    AmazonSQSManagedConnection(Subject subject, ConnectionRequestInfo cxRequestInfo, AmazonSQSManagedConnectionFactory aThis) {
-        AwsCredentialsProvider credentialsProvider = getCredentials(aThis);
-        sqsClient = SqsClient.builder().region(Region.of(aThis.getRegion())).credentialsProvider(credentialsProvider).build();
-    }
+	AmazonSQSManagedConnection(Subject subject, ConnectionRequestInfo cxRequestInfo, AmazonSQSManagedConnectionFactory aThis) {
+		AwsCredentialsProvider credentialsProvider = getCredentials(aThis);
+		sqsClient = SqsClient.builder().region(Region.of(aThis.getRegion())).credentialsProvider(credentialsProvider).build();
+	}
 
-    @Override
-    public Object getConnection(Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
-        AmazonSQSConnection newConn = new AmazonSQSConnectionImpl(this);
-        connectionHandles.add(newConn);
-        return newConn;
-    }
+	public AmazonSQSManagedConnection(Subject subject, ConnectionRequestInfo cxRequestInfo,
+			AmazonSQSManagedConnectionFactory aThis, URI overrideUrl) {
+		AwsCredentialsProvider credentialsProvider = getCredentials(aThis);
+		sqsClient = SqsClient.builder().endpointOverride(overrideUrl).region(Region.of(aThis.getRegion()))
+				.credentialsProvider(credentialsProvider).build();
+	}
 
-    @Override
-    public void destroy() throws ResourceException {
+	@Override
+	public Object getConnection(Subject subject, ConnectionRequestInfo cxRequestInfo) throws ResourceException {
+		AmazonSQSConnection newConn = new AmazonSQSConnectionImpl(this);
+		connectionHandles.add(newConn);
+		return newConn;
+	}
 
-    }
+	@Override
+	public void destroy() throws ResourceException {
 
-    @Override
-    public void cleanup() throws ResourceException {
-        connectionHandles.clear();
-    }
+	}
 
-    @Override
-    public void associateConnection(Object connection) throws ResourceException {
-        AmazonSQSConnectionImpl impl = (AmazonSQSConnectionImpl) connection;
-        impl.setRealConnection(this);
-        connectionHandles.add(impl);
-    }
+	@Override
+	public void cleanup() throws ResourceException {
+		connectionHandles.clear();
+	}
 
-    @Override
-    public void addConnectionEventListener(ConnectionEventListener listener) {
-        listeners.add(listener);
-    }
+	@Override
+	public void associateConnection(Object connection) throws ResourceException {
+		AmazonSQSConnectionImpl impl = (AmazonSQSConnectionImpl) connection;
+		impl.setRealConnection(this);
+		connectionHandles.add(impl);
+	}
 
-    @Override
-    public void removeConnectionEventListener(ConnectionEventListener listener) {
-        listeners.remove(listener);
-    }
+	@Override
+	public void addConnectionEventListener(ConnectionEventListener listener) {
+		listeners.add(listener);
+	}
 
-    @Override
-    public XAResource getXAResource() throws ResourceException {
-        throw new NotSupportedException("Not supported yet.");
-    }
+	@Override
+	public void removeConnectionEventListener(ConnectionEventListener listener) {
+		listeners.remove(listener);
+	}
 
-    @Override
-    public LocalTransaction getLocalTransaction() throws ResourceException {
-        throw new NotSupportedException("Not supported yet.");
-    }
+	@Override
+	public XAResource getXAResource() throws ResourceException {
+		throw new NotSupportedException("Not supported yet.");
+	}
 
-    @Override
-    public ManagedConnectionMetaData getMetaData() throws ResourceException {
-        return new ManagedConnectionMetaData() {
-            @Override
-            public String getEISProductName() throws ResourceException {
-                return "Amazon SQS JCA Adapter";
-            }
+	@Override
+	public LocalTransaction getLocalTransaction() throws ResourceException {
+		throw new NotSupportedException("Not supported yet.");
+	}
 
-            @Override
-            public String getEISProductVersion() throws ResourceException {
-                return "1.0.0";
-            }
+	@Override
+	public ManagedConnectionMetaData getMetaData() throws ResourceException {
+		return new ManagedConnectionMetaData() {
+			@Override
+			public String getEISProductName() throws ResourceException {
+				return "Amazon SQS JCA Adapter";
+			}
 
-            @Override
-            public int getMaxConnections() throws ResourceException {
-                return 0;
-            }
+			@Override
+			public String getEISProductVersion() throws ResourceException {
+				return "1.0.0";
+			}
 
-            @Override
-            public String getUserName() throws ResourceException {
-                return "anonymous";
-            }
-        };
-    }
+			@Override
+			public int getMaxConnections() throws ResourceException {
+				return 0;
+			}
 
-    @Override
-    public void setLogWriter(PrintWriter out) throws ResourceException {
-        logWriter = out;
-    }
+			@Override
+			public String getUserName() throws ResourceException {
+				return "anonymous";
+			}
+		};
+	}
 
-    @Override
-    public PrintWriter getLogWriter() throws ResourceException {
-        return logWriter;
-    }
+	@Override
+	public void setLogWriter(PrintWriter out) throws ResourceException {
+		logWriter = out;
+	}
 
-    void removeHandle(AmazonSQSConnection connection) {
-        connectionHandles.remove(connection);
-        ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.CONNECTION_CLOSED);
-        event.setConnectionHandle(connection);
-        for (ConnectionEventListener listener : listeners) {
-            listener.connectionClosed(event);
-        }
-    }
+	@Override
+	public PrintWriter getLogWriter() throws ResourceException {
+		return logWriter;
+	}
 
-    @Override
-    public SendMessageResponse sendMessage(SendMessageRequest request) {
-        return sqsClient.sendMessage(request);
-    }
+	void removeHandle(AmazonSQSConnection connection) {
+		connectionHandles.remove(connection);
+		ConnectionEvent event = new ConnectionEvent(this, ConnectionEvent.CONNECTION_CLOSED);
+		event.setConnectionHandle(connection);
+		for (ConnectionEventListener listener : listeners) {
+			listener.connectionClosed(event);
+		}
+	}
 
-    @Override
-    public SendMessageResponse sendMessage(String queueURL, String messageBody) {
-        return sqsClient.sendMessage(SendMessageRequest.builder().queueUrl(queueURL).messageBody(messageBody).build());
-    }
+	@Override
+	public SendMessageResponse sendMessage(SendMessageRequest request) {
+		return sqsClient.sendMessage(request);
+	}
 
-    @Override
-    public SendMessageBatchResponse sendMessageBatch(SendMessageBatchRequest batch) {
-        return sqsClient.sendMessageBatch(batch);
-    }
+	@Override
+	public SendMessageResponse sendMessage(String queueURL, String messageBody) {
+		return sqsClient.sendMessage(SendMessageRequest.builder().queueUrl(queueURL).messageBody(messageBody).build());
+	}
 
-    @Override
-    public SendMessageBatchResponse sendMessageBatch(String queueURL, List<SendMessageBatchRequestEntry> entries) {
-        return sqsClient.sendMessageBatch(SendMessageBatchRequest.builder().queueUrl(queueURL).entries(entries).build());
-    }
+	@Override
+	public SendMessageBatchResponse sendMessageBatch(SendMessageBatchRequest batch) {
+		return sqsClient.sendMessageBatch(batch);
+	}
 
-    @Override
-    public void close() throws Exception {
-        destroy();
-    }
+	@Override
+	public SendMessageBatchResponse sendMessageBatch(String queueURL, List<SendMessageBatchRequestEntry> entries) {
+		return sqsClient.sendMessageBatch(SendMessageBatchRequest.builder().queueUrl(queueURL).entries(entries).build());
+	}
 
-    private AwsCredentialsProvider getCredentials(AmazonSQSManagedConnectionFactory aThis) {
-        AwsCredentialsProvider credentialsProvider;
-        if (StringUtils.isNotBlank(aThis.getProfileName())) {
-            credentialsProvider = ProfileCredentialsProvider.create(aThis.getProfileName());
-        } else if (StringUtils.isNotBlank(aThis.getAwsAccessKeyId()) && StringUtils.isNotBlank(aThis.getAwsSecretKey())) {
-            credentialsProvider = new AwsCredentialsProvider(){
-                @Override
-                public AwsCredentials resolveCredentials() {
-                    return new AwsCredentials() {
-                        @Override
-                        public String accessKeyId() {
-                            return aThis.getAwsAccessKeyId();
-                        }
+	@Override
+	public void close() throws Exception {
+		destroy();
+	}
 
-                        @Override
-                        public String secretAccessKey() {
-                            return aThis.getAwsSecretKey();
-                        }
-                    };
-                }
-            };
-        } else {
-            credentialsProvider = DefaultCredentialsProvider.create();
-        }
-        return credentialsProvider;
-    }
+	private AwsCredentialsProvider getCredentials(AmazonSQSManagedConnectionFactory aThis) {
+		AwsCredentialsProvider credentialsProvider;
+		if (StringUtils.isNotBlank(aThis.getProfileName())) {
+			credentialsProvider = ProfileCredentialsProvider.create(aThis.getProfileName());
+		} else if (StringUtils.isNotBlank(aThis.getAwsAccessKeyId()) && StringUtils.isNotBlank(aThis.getAwsSecretKey())) {
+			credentialsProvider = () -> new AwsCredentials() {
+				@Override
+				public String accessKeyId() {
+					return aThis.getAwsAccessKeyId();
+				}
+
+				@Override
+				public String secretAccessKey() {
+					return aThis.getAwsSecretKey();
+				}
+			};
+		} else {
+			credentialsProvider = DefaultCredentialsProvider.create();
+		}
+		return credentialsProvider;
+	}
 
 }
